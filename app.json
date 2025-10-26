@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "DiaryDungeon",
-    "slug": "Natively",
+    "slug": "diary-dungeon",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/natively-dark.png",
