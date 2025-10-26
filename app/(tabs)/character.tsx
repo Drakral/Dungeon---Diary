@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
+import CharacterAvatar from '@/components/CharacterAvatar';
+import { storage } from '@/utils/storage';
 
 interface CharacterStats {
   strength: number;
@@ -30,6 +32,7 @@ export default function CharacterScreen() {
   const [hp, setHp] = useState('45');
   const [maxHp, setMaxHp] = useState('45');
   const [ac, setAc] = useState('16');
+  const [isLoading, setIsLoading] = useState(true);
   
   const [stats, setStats] = useState<CharacterStats>({
     strength: 16,
@@ -39,6 +42,54 @@ export default function CharacterScreen() {
     wisdom: 13,
     charisma: 12,
   });
+
+  // Load character data on mount
+  useEffect(() => {
+    loadCharacterData();
+  }, []);
+
+  // Save character data whenever it changes
+  useEffect(() => {
+    if (!isLoading) {
+      saveCharacterData();
+    }
+  }, [characterName, characterClass, level, race, hp, maxHp, ac, stats]);
+
+  const loadCharacterData = async () => {
+    const savedData = await storage.loadCharacter();
+    if (savedData) {
+      setCharacterName(savedData.characterName || 'Aragorn');
+      setCharacterClass(savedData.characterClass || 'Ranger');
+      setLevel(savedData.level || '5');
+      setRace(savedData.race || 'Human');
+      setHp(savedData.hp || '45');
+      setMaxHp(savedData.maxHp || '45');
+      setAc(savedData.ac || '16');
+      setStats(savedData.stats || {
+        strength: 16,
+        dexterity: 14,
+        constitution: 15,
+        intelligence: 10,
+        wisdom: 13,
+        charisma: 12,
+      });
+    }
+    setIsLoading(false);
+  };
+
+  const saveCharacterData = async () => {
+    const data = {
+      characterName,
+      characterClass,
+      level,
+      race,
+      hp,
+      maxHp,
+      ac,
+      stats,
+    };
+    await storage.saveCharacter(data);
+  };
 
   const calculateModifier = (stat: number): string => {
     const modifier = Math.floor((stat - 10) / 2);
@@ -63,6 +114,16 @@ export default function CharacterScreen() {
     </View>
   );
 
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading character...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
@@ -74,6 +135,21 @@ export default function CharacterScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Character Avatar */}
+        <View style={styles.avatarCard}>
+          <CharacterAvatar
+            characterName={characterName}
+            characterClass={characterClass}
+            race={race}
+            stats={stats}
+            size={180}
+          />
+          <Text style={styles.avatarName}>{characterName}</Text>
+          <Text style={styles.avatarSubtitle}>
+            Level {level} {race} {characterClass}
+          </Text>
+        </View>
+
         {/* Basic Info Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Basic Information</Text>
@@ -235,6 +311,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: colors.text,
+    fontWeight: '600',
+  },
   header: {
     paddingHorizontal: 20,
     paddingVertical: 16,
@@ -253,6 +339,28 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: Platform.OS === 'ios' ? 20 : 100,
+  },
+  avatarCard: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 24,
+    marginBottom: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.accent,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+    elevation: 2,
+  },
+  avatarName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginTop: 16,
+  },
+  avatarSubtitle: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginTop: 4,
   },
   card: {
     backgroundColor: colors.card,

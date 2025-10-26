@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
+import { storage } from '@/utils/storage';
 
 interface JournalEntry {
   id: string;
@@ -21,28 +22,55 @@ interface JournalEntry {
   date: Date;
 }
 
+const DEFAULT_ENTRIES: JournalEntry[] = [
+  {
+    id: '1',
+    title: 'The Adventure Begins',
+    content:
+      'Today we set out from the village of Phandalin. Our quest is to find the lost mine of Phandelver and rescue Gundren Rockseeker. The road ahead is dangerous, but our party is ready.',
+    date: new Date(2024, 0, 15),
+  },
+  {
+    id: '2',
+    title: 'Goblin Ambush',
+    content:
+      'We were ambushed by goblins on the Triboar Trail. After a fierce battle, we defeated them and discovered they were working for someone called the Black Spider. We must investigate further.',
+    date: new Date(2024, 0, 16),
+  },
+];
+
 export default function JournalScreen() {
-  const [entries, setEntries] = useState<JournalEntry[]>([
-    {
-      id: '1',
-      title: 'The Adventure Begins',
-      content:
-        'Today we set out from the village of Phandalin. Our quest is to find the lost mine of Phandelver and rescue Gundren Rockseeker. The road ahead is dangerous, but our party is ready.',
-      date: new Date(2024, 0, 15),
-    },
-    {
-      id: '2',
-      title: 'Goblin Ambush',
-      content:
-        'We were ambushed by goblins on the Triboar Trail. After a fierce battle, we defeated them and discovered they were working for someone called the Black Spider. We must investigate further.',
-      date: new Date(2024, 0, 16),
-    },
-  ]);
+  const [entries, setEntries] = useState<JournalEntry[]>(DEFAULT_ENTRIES);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [newEntryTitle, setNewEntryTitle] = useState('');
   const [newEntryContent, setNewEntryContent] = useState('');
   const [editingEntry, setEditingEntry] = useState<string | null>(null);
+
+  // Load journal on mount
+  useEffect(() => {
+    loadJournal();
+  }, []);
+
+  // Save journal whenever it changes
+  useEffect(() => {
+    if (!isLoading) {
+      saveJournal();
+    }
+  }, [entries]);
+
+  const loadJournal = async () => {
+    const savedEntries = await storage.loadJournal();
+    if (savedEntries && savedEntries.length > 0) {
+      setEntries(savedEntries);
+    }
+    setIsLoading(false);
+  };
+
+  const saveJournal = async () => {
+    await storage.saveJournal(entries);
+  };
 
   const addEntry = () => {
     if (!newEntryTitle.trim()) {
@@ -56,7 +84,6 @@ export default function JournalScreen() {
     }
 
     if (editingEntry) {
-      // Update existing entry
       setEntries(
         entries.map((entry) =>
           entry.id === editingEntry
@@ -66,7 +93,6 @@ export default function JournalScreen() {
       );
       setEditingEntry(null);
     } else {
-      // Add new entry
       const newEntry: JournalEntry = {
         id: Date.now().toString(),
         title: newEntryTitle,
@@ -117,6 +143,16 @@ export default function JournalScreen() {
       day: 'numeric',
     });
   };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading journal...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -247,6 +283,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: colors.text,
+    fontWeight: '600',
   },
   header: {
     paddingHorizontal: 20,

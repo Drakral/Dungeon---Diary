@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
+import { storage } from '@/utils/storage';
 
 interface InventoryItem {
   id: string;
@@ -22,43 +23,70 @@ interface InventoryItem {
   description: string;
 }
 
+const DEFAULT_ITEMS: InventoryItem[] = [
+  {
+    id: '1',
+    name: 'Longsword',
+    quantity: 1,
+    weight: 3,
+    description: 'A versatile martial weapon',
+  },
+  {
+    id: '2',
+    name: 'Health Potion',
+    quantity: 3,
+    weight: 0.5,
+    description: 'Restores 2d4+2 hit points',
+  },
+  {
+    id: '3',
+    name: 'Rope (50ft)',
+    quantity: 1,
+    weight: 10,
+    description: 'Hemp rope, 50 feet',
+  },
+  {
+    id: '4',
+    name: 'Gold Pieces',
+    quantity: 150,
+    weight: 0,
+    description: 'Currency',
+  },
+];
+
 export default function InventoryScreen() {
-  const [items, setItems] = useState<InventoryItem[]>([
-    {
-      id: '1',
-      name: 'Longsword',
-      quantity: 1,
-      weight: 3,
-      description: 'A versatile martial weapon',
-    },
-    {
-      id: '2',
-      name: 'Health Potion',
-      quantity: 3,
-      weight: 0.5,
-      description: 'Restores 2d4+2 hit points',
-    },
-    {
-      id: '3',
-      name: 'Rope (50ft)',
-      quantity: 1,
-      weight: 10,
-      description: 'Hemp rope, 50 feet',
-    },
-    {
-      id: '4',
-      name: 'Gold Pieces',
-      quantity: 150,
-      weight: 0,
-      description: 'Currency',
-    },
-  ]);
+  const [items, setItems] = useState<InventoryItem[]>(DEFAULT_ITEMS);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [newItemName, setNewItemName] = useState('');
   const [newItemQuantity, setNewItemQuantity] = useState('1');
   const [newItemWeight, setNewItemWeight] = useState('0');
   const [newItemDescription, setNewItemDescription] = useState('');
+
+  // Load inventory on mount
+  useEffect(() => {
+    loadInventory();
+  }, []);
+
+  // Save inventory whenever it changes
+  useEffect(() => {
+    if (!isLoading) {
+      saveInventory();
+    }
+  }, [items]);
+
+  const loadInventory = async () => {
+    const savedItems = await storage.loadInventory();
+    if (savedItems && savedItems.length > 0) {
+      setItems(savedItems);
+    }
+    setIsLoading(false);
+  };
+
+  const saveInventory = async () => {
+    await storage.saveInventory(items);
+  };
 
   const totalWeight = items.reduce(
     (sum, item) => sum + item.weight * item.quantity,
@@ -113,6 +141,16 @@ export default function InventoryScreen() {
       })
     );
   };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading inventory...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -263,6 +301,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: colors.text,
+    fontWeight: '600',
   },
   header: {
     paddingHorizontal: 20,
